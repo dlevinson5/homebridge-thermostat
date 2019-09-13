@@ -1,0 +1,24 @@
+{
+  "name": "homebridge-temperature",
+  "version": "0.0.1",
+  "description": "homebridge thermostat plugin",
+  "license": "ISC",
+  "keywords": [
+    "homebridge-plugin"
+  ],
+  "engines": {
+    "node": ">=0.12.0",
+    "homebridge": ">=0.2.0"
+  },
+  "author": {
+    "name": "David Levinson"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/dlevinson5/homebridge-temperature"
+  },
+  "dependencies": {
+    "sync-request": "^2.1.0",
+    "then-request": "^6.0.2"
+  }
+}
