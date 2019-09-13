@@ -19,31 +19,18 @@ function HttpThermostat(log, config) {
     this.targetTemperature = (70 - 32) / (9/5);
     this.temperature = 0;
     this.url = config["url"];
-    this.http_method = config["http_method"] || "GET";
-    this.sendimmediately = config["sendimmediately"] || "";
     this.name = config["name"];
-    this.manufacturer = config["manufacturer"] || "Fieldston Software";
+    this.manufacturer = config["manufacturer"] || "David Levinson";
     this.model = config["model"] || "DS18B20";
     this.serial = config["serial"] || "None";
 }
 
 HttpThermostat.prototype = {
 
-    httpRequest: function (url, body, method, username, password, sendimmediately, callback) {
-        request({
-                    url: url,
-                    body: body,
-                    method: method,
-                    rejectUnauthorized: false
-                },
-                function (error, response, body) {
-                    callback(error, response, body)
-                })
-    },
     getHumidity: function (callback) {
 	    this.log("getHumidity");
 
-        var res = request(this.http_method, this.url + "api/status", {});
+        var res = request("GET", this.url + "api/status", {});
 
         if (res.statusCode > 400) {
             this.log('HTTP function failed');
