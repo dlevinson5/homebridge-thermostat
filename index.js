@@ -14,15 +14,17 @@ function HttpThermostat(log, config) {
     this.thermostatService = null;
     this.power = false;
     this.currentHeatingCoolingState = 0;
-    this.mintemp = Math.round((60 / (9/5)) - 32);
-    this.maxtemp = Math.round((90 / (9/5)) - 32);
-    this.targetTemperature = (70 - 32) / (9/5);
+    this.mintemp = this.f2c(60);
+    this.maxtemp = this.f2c(100);
+    this.targetTemperature = this.f2c(100);
     this.temperature = 0;
     this.url = config["url"];
+    this.http_method = config["http_method"] || "GET";
     this.name = config["name"];
-    this.manufacturer = config["manufacturer"] || "David Levinson";
+    this.manufacturer = config["manufacturer"] || "Fieldston Software";
     this.model = config["model"] || "DS18B20";
     this.serial = config["serial"] || "None";
+    this.targetHeatingCoolingState = 0;
 }
 
 HttpThermostat.prototype = {
@@ -30,7 +32,7 @@ HttpThermostat.prototype = {
     getHumidity: function (callback) {
 	    this.log("getHumidity");
 
-        var res = request("GET", this.url + "api/status", {});
+        var res = request(this.http_method, this.url + "api/status", {});
 
         if (res.statusCode > 400) {
             this.log('HTTP function failed');
@@ -41,8 +43,6 @@ HttpThermostat.prototype = {
 
             this.thermostatService.setCharacteristic(Characteristic.CurrentRelativeHumidity, info.humidity);
 
-            //this.log(res.body);
-            //this.log(info);
 	        this.currentRelativeHumidity = info.humidity;
 
 	        callback(null, this.currentRelativeHumidity);
@@ -62,16 +62,13 @@ HttpThermostat.prototype = {
 
             this.thermostatService.setCharacteristic(Characteristic.CurrentTemperature, info.temperature);
 
-            // this.log(res.body);
-            //this.log(info);
             this.temperature = info.temperature;
 
             callback(null, this.temperature);
 	    }
     },
     getTargetTemperature: function(callback) {
-	    this.log("getTargetTemperature");
-	    this.log(this.targetTemperature);
+	    this.log("getTargetTemperature = " + this.targetTemperature);
   	    callback(null, this.targetTemperature);
     },
     setTargetTemperature: function(value, callback) {
@@ -80,7 +77,8 @@ HttpThermostat.prototype = {
         this.log(value);
 
         this.targetTemperature = value;
-        var targetTemperatureF = Math.round((value * 9/5) + 32);
+        var targetTemperatureF = this.c2f(value);
+        this.log("target temp = " + targetTemperatureF);
 
         var payload = { json: { "temperature" : targetTemperatureF, "power": this.power ? 1 : 0 } };
         this.log(payload);
@@ -93,13 +91,6 @@ HttpThermostat.prototype = {
         } else {
             this.log('HTTP call function succeeded!');
 
-            // var info = JSON.parse(res.body);
-            // this.thermostatService.setCharacteristic(Characteristic.TargetTemperature, value);
-            // this.thermostatService.setCharacteristic(Characteristic.CurrentHeatingCoolingState, 2); // cooling
-            // this.thermostatService.setCharacteristic(Characteristic.CurrentHeatingCoolingState, 2);
-
-            // this.log(info);
-            // this.log(info);
             this.targetTemperature = value;
             callback(null, value);
         }
@@ -141,9 +132,9 @@ HttpThermostat.prototype = {
   	    this.power = (value === 2 || value === 3);
 
 	    this.log("power " + this.power);
-        this.log("temperature " + this.targetTemperature);
+        this.log("temperature " + this.targetTemperature + " " + this.c2f(this.targetTemperature));
 
-        var targetTemperatureF = Math.round((this.targetTemperature * 9/5) + 32);
+        var targetTemperatureF = this.c2f(value);
         var payload = { json: { "temperature" : targetTemperatureF, "power": this.power ? 1 : 0 } };
         this.log(payload);
 
@@ -156,7 +147,7 @@ HttpThermostat.prototype = {
              this.log('HTTP call function succeeded!');
 
              // var info = JSON.parse(res.body);
-             // thermostatService.setCharacteristic(Characteristic.CurrentHeatingCoolingState, value);
+             // this.thermostatService.setCharacteristic(Characteristic.CurrentHeatingCoolingState, value);
              if (this.power) {
                  this.thermostatService.setCharacteristic(Characteristic.TargetTemperature, this.targetTemperature);
              }
@@ -171,7 +162,15 @@ HttpThermostat.prototype = {
         this.log("Identify requested!");
         callback(); // success
     },
+    f2c: function(tempf) {
+        return Math.round((tempf / (9/5)) - 32);
+    },
+    c2f: function(tempc) {
+        return Math.round((tempc * (9/5)) + 32);
+    },
     getServices: function () {
+
+        this.log("getServices");
 
         var informationService = new Service.AccessoryInformation();
 
@@ -194,18 +193,13 @@ HttpThermostat.prototype = {
                 .on('get', this.getTargetTemperature.bind(this))
                 .on('set', this.setTargetTemperature.bind(this));
 
-        this.thermostatService.getCharacteristic(Characteristic.CurrentTemperature)
-                .setProps({
-                    minValue: 0,
-                    maxValue: 150,
-                    minStep: 1.0
-                });
-
         this.thermostatService.getCharacteristic(Characteristic.TargetTemperature)
               .setProps({
-                minValue: this.mintemp,
-                maxValue: this.maxtemp,
-                minStep: 1.0
+                  format: Characteristic.Formats.FLOAT,
+                  unit: Characteristic.Units.FAHRENHEIT,
+                  minValue: this.f2c(60),
+                  maxValue: this.f2c(130),
+                  minStep: 0.1
               });
 
         this.thermostatService.getCharacteristic(Characteristic.CurrentHeatingCoolingState)
@@ -214,6 +208,8 @@ HttpThermostat.prototype = {
         this.thermostatService.getCharacteristic(Characteristic.TargetHeatingCoolingState)
                 .on('get', this.getTargetHeatingCoolingState.bind(this))
                 .on('set', this.setTargetHeatingCoolingState.bind(this));
+
+        this.log("getServices set ");
 
         return [this.thermostatService, informationService];
     }
