@@ -10,13 +10,12 @@ module.exports = function (homebridge) {
 function HttpThermostat(log, config) {
     this.log = log;
 
-    // url info
     this.thermostatService = null;
     this.power = false;
     this.currentHeatingCoolingState = 0;
     this.mintemp = this.f2c(60);
     this.maxtemp = this.f2c(100);
-    this.targetTemperature = this.f2c(100);
+    this.targetTemperature = 0;
     this.temperature = 0;
     this.url = config["url"];
     this.http_method = config["http_method"] || "GET";
@@ -30,147 +29,137 @@ function HttpThermostat(log, config) {
 HttpThermostat.prototype = {
 
     getHumidity: function (callback) {
-	    this.log("getHumidity");
+	    this.log("[getHumidity] => Invoke");
 
         var res = request(this.http_method, this.url + "api/status", {});
 
         if (res.statusCode > 400) {
-            this.log('HTTP function failed');
+            this.log('[getHumidity] => HTTP function failed');
             callback();
         } else {
-            this.log('HTTP function succeeded!');
+
             let info = JSON.parse(res.body);
 
             this.thermostatService.setCharacteristic(Characteristic.CurrentRelativeHumidity, info.humidity);
-
 	        this.currentRelativeHumidity = info.humidity;
 
+            this.log("[getHumidity] => result  = " + this.currentRelativeHumidity);
 	        callback(null, this.currentRelativeHumidity);
         }
     },
     getTemperature: function (callback) {
-	    this.log("getTemperature");
+	    this.log("[getTemperature] => Invoke");
 
     	var res = request("GET", this.url + "api/status", {});
 
         if (res.statusCode > 400) {
-            this.log('HTTP function failed');
-            callback(error);
+            this.log('[getTemperature] => HTTP function failed');
+            callback();
         } else {
-            this.log('HTTP function succeeded!');
+
             let  info = JSON.parse(res.body);
-
-            this.thermostatService.setCharacteristic(Characteristic.CurrentTemperature, info.temperature);
-
             this.temperature = info.temperature;
 
+            if (this.targetTemperature === 0)
+                this.targetTemperature = this.temperature;
+
+            this.log("[getTemperature] => result = " + this.temperature);
             callback(null, this.temperature);
 	    }
     },
     getTargetTemperature: function(callback) {
-	    this.log("getTargetTemperature = " + this.targetTemperature);
+	    this.log("[getTargetTemperature] => Invoke");
+        this.log("[getTargetTemperature] result = [" + this.targetTemperature + "c] (" + this.c2f(this.targetTemperature) + "f]");
   	    callback(null, this.targetTemperature);
     },
     setTargetTemperature: function(value, callback) {
 
-        this.log("setTargetTemperature");
-        this.log(value);
+        this.log("[setTargetTemperature] Invoke (" + this.formatTemp(value) + ")");
 
         this.targetTemperature = value;
-        var targetTemperatureF = this.c2f(value);
-        this.log("target temp = " + targetTemperatureF);
+        let targetTemperatureF = this.c2f(value);
+        this.log("[setTargetTemperature] => " + targetTemperatureF + "f");
 
-        var payload = { json: { "temperature" : targetTemperatureF, "power": this.power ? 1 : 0 } };
+        let payload = { json: { "temperature" : targetTemperatureF, "power": this.power ? 1 : 0 } };
         this.log(payload);
 
-        var res = request("POST", this.url + "api/state", payload);
+        let res = request("POST", this.url + "api/state", payload);
 
         if (res.statusCode > 400) {
-            this.log('HTTP call function failed');
+            this.log('[setTargetTemperature] => HTTP call function failed');
             callback(error);
         } else {
-            this.log('HTTP call function succeeded!');
-
             this.targetTemperature = value;
+            this.log("[setTargetTemperature] => result = " + this.targetTemperature);
             callback(null, value);
         }
     },
     getCurrentHeatingCoolingState : function(callback) { 
 
-	    this.log("getCurrentHeatingCoolingState");
+	    this.log("[getCurrentHeatingCoolingState] => Invoke");
 
-        var res = request("GET", this.url + "api/status", {});
+        let res = request("GET", this.url + "api/status", {});
 
         if (res.statusCode > 400) {
-            this.log('HTTP function failed');
+            this.log('[getCurrentHeatingCoolingState] => HTTP function failed');
             callback();
         } else {
-            this.log('HTTP function succeeded!');
-            var info = JSON.parse(res.body);
+            let info = JSON.parse(res.body);
 
-            // this.log(res.body);
-            // this.log(info);
-            this.currentHeatingCoolingState = (info.power === 1 ? 2 : 0);
+            this.thermostatService.setCharacteristic(Characteristic.CurrentTemperature, info.temperature);
 
-            // this.thermostatService.setCharacteristic(Characteristic.CurrentHeatingCoolingState, this.currentHeatingCoolingState);
-
-            this.log(this.currentHeatingCoolingState);
-
+            this.log("[getCurrentHeatingCoolingState] => result = " + this.currentHeatingCoolingState);
             callback(null, this.currentHeatingCoolingState);
         }
     },
     getTargetHeatingCoolingState: function(callback) {
-        this.log("getTargetHeatingCoolingState");
-        this.log(this.currentHeatingCoolingState);
-        callback(null, this.currentHeatingCoolingState);
+        this.log("[getTargetHeatingCoolingState] => Invoke");
+        this.log("[getTargetHeatingCoolingState] result = " + this.targetHeatingCoolingState);
+        callback(null, this.targetHeatingCoolingState);
     },
     setTargetHeatingCoolingState: function(value, callback) {
 
-	    this.log("setTargetHeatingCoolingState");
-	    this.log(value);
+	    this.log("[setTargetHeatingCoolingState] =>  (" + value + ")");
 
   	    this.power = (value === 2 || value === 3);
 
-	    this.log("power " + this.power);
-        this.log("temperature " + this.targetTemperature + " " + this.c2f(this.targetTemperature));
+	    this.log("[setTargetHeatingCoolingState] => Power = " + this.power);
 
-        var targetTemperatureF = this.c2f(value);
-        var payload = { json: { "temperature" : targetTemperatureF, "power": this.power ? 1 : 0 } };
+        let targetTemperatureF = this.c2f(this.targetTemperature);
+        let payload = { json: { "temperature" : targetTemperatureF, "power": this.power ? 1 : 0 } };
         this.log(payload);
 
-        var res = request("POST", this.url + "api/state", payload);
+        let res = request("POST", this.url + "api/state", payload);
 
         if (res.statusCode > 400) {
-             this.log('HTTP call function failed');
-             callback();
+              this.log('[setTargetHeatingCoolingState] => HTTP call function failed');
+              callback();
         } else {
-             this.log('HTTP call function succeeded!');
-
-             // var info = JSON.parse(res.body);
-             // this.thermostatService.setCharacteristic(Characteristic.CurrentHeatingCoolingState, value);
-             if (this.power) {
-                 this.thermostatService.setCharacteristic(Characteristic.TargetTemperature, this.targetTemperature);
-             }
-          
-	         // this.log(res.body);
-             this.log(value);
-             this.targetHeatingCoolingState = value;
-             callback();
+              this.targetHeatingCoolingState = value;
+              this.thermostatService.setCharacteristic(Characteristic.TargetTemperature, this.targetTemperature);
+              this.thermostatService.setCharacteristic(Characteristic.CurrentRelativeHumidity, this.currentRelativeHumidity);
+              this.thermostatService.setCharacteristic(Characteristic.CurrentTemperature, this.temperature);
+              this.log("[setTargetHeatingCoolingState] => result = " + this.targetHeatingCoolingState);
+              callback();
         }
     },
     identify: function (callback) {
         this.log("Identify requested!");
         callback(); // success
     },
+
     f2c: function(tempf) {
         return Math.round((tempf / (9/5)) - 32);
     },
     c2f: function(tempc) {
         return Math.round((tempc * (9/5)) + 32);
     },
+    formatTemp: function(tempc) {
+        return tempc + "c (" + this.c2f(tempc) + "f)"
+    },
     getServices: function () {
 
-        this.log("getServices");
+        this.log("[getServices] => Invoke");
 
         var informationService = new Service.AccessoryInformation();
 
@@ -191,7 +180,10 @@ HttpThermostat.prototype = {
 
         this.thermostatService.getCharacteristic(Characteristic.TargetTemperature)
                 .on('get', this.getTargetTemperature.bind(this))
-                .on('set', this.setTargetTemperature.bind(this));
+                .on('set', this.setTargetTemperature.bind(this))
+                .setProps({
+                    value: this.targetTemperature
+                });
 
         this.thermostatService.getCharacteristic(Characteristic.TargetTemperature)
               .setProps({
@@ -208,8 +200,6 @@ HttpThermostat.prototype = {
         this.thermostatService.getCharacteristic(Characteristic.TargetHeatingCoolingState)
                 .on('get', this.getTargetHeatingCoolingState.bind(this))
                 .on('set', this.setTargetHeatingCoolingState.bind(this));
-
-        this.log("getServices set ");
 
         return [this.thermostatService, informationService];
     }
