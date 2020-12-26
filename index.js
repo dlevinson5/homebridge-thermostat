@@ -4,7 +4,8 @@ var request = require('sync-request');
 module.exports = function (homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
-    homebridge.registerAccessory("homebridge-thermostat", "homebridge-thermostat", HttpThermostat);
+    homebridge.registerAccessory("homebridge-thermostat-ex", "Thermostat", HttpThermostat);
+    // homebridge.registerAccessory("homebridge-thermostat", "homebridge-thermostat", HttpThermostat);
 };
 
 function HttpThermostat(log, config) {
@@ -31,9 +32,14 @@ HttpThermostat.prototype = {
     getHumidity: function (callback) {
 	    this.log("[getHumidity] => Invoke");
 
-        var res = request(this.http_method, this.url + "api/status", {});
+        var res = null;
+        try {
+            res = request(this.http_method, this.url + "api/status", {});
+        } catch (err) {
+            this.log(err.message);
+        }
 
-        if (res.statusCode > 400) {
+        if (res == null || res.statusCode > 400) {
             this.log('[getHumidity] => HTTP function failed');
             callback();
         } else {
@@ -50,9 +56,15 @@ HttpThermostat.prototype = {
     getTemperature: function (callback) {
 	    this.log("[getTemperature] => Invoke");
 
-    	var res = request("GET", this.url + "api/status", {});
+	var res = null;
 
-        if (res.statusCode > 400) {
+	try {
+    	    res = request("GET", this.url + "api/status", {});
+	} catch (err) {
+	    this.log(err.message);
+        }
+
+        if (res == null || res.statusCode > 400) {
             this.log('[getTemperature] => HTTP function failed');
             callback();
         } else {
@@ -77,7 +89,7 @@ HttpThermostat.prototype = {
         this.log("[setTargetTemperature] Invoke (" + this.formatTemp(value) + ")");
 
         this.targetTemperature = value;
-        let targetTemperatureF = this.c2f(value);
+        let targetTemperatureF = parseInt(this.c2f(value));
         this.log("[setTargetTemperature] => " + targetTemperatureF + "f");
 
         let payload = { json: { "temperature" : targetTemperatureF, "power": this.power ? 1 : 0 } };
@@ -96,11 +108,17 @@ HttpThermostat.prototype = {
     },
     getCurrentHeatingCoolingState : function(callback) { 
 
-	    this.log("[getCurrentHeatingCoolingState] => Invoke");
+	this.log("[getCurrentHeatingCoolingState] => Invoke");
 
-        let res = request("GET", this.url + "api/status", {});
+	var res = null;
 
-        if (res.statusCode > 400) {
+	try {
+            res = request("GET", this.url + "api/status", {});
+	} catch (err) {
+	    this.log(err.message);
+        }
+
+        if (res == null || res.statusCode > 400) {
             this.log('[getCurrentHeatingCoolingState] => HTTP function failed');
             callback();
         } else {
@@ -119,19 +137,24 @@ HttpThermostat.prototype = {
     },
     setTargetHeatingCoolingState: function(value, callback) {
 
-	    this.log("[setTargetHeatingCoolingState] =>  (" + value + ")");
+	this.log("[setTargetHeatingCoolingState] =>  (" + value + ")");
 
-  	    this.power = (value === 2 || value === 3);
+  	this.power = (value === 2 || value === 3);
 
-	    this.log("[setTargetHeatingCoolingState] => Power = " + this.power);
+	this.log("[setTargetHeatingCoolingState] => Power = " + this.power);
 
         let targetTemperatureF = this.c2f(this.targetTemperature);
         let payload = { json: { "temperature" : targetTemperatureF, "power": this.power ? 1 : 0 } };
         this.log(payload);
 
-        let res = request("POST", this.url + "api/state", payload);
+	var res = null;
+	try {
+            res = request("POST", this.url + "api/state", payload);
+	} catch (err) {
+	    this.log(err.message);
+        }
 
-        if (res.statusCode > 400) {
+        if (res == null || res.statusCode > 400) {
               this.log('[setTargetHeatingCoolingState] => HTTP call function failed');
               callback();
         } else {
