@@ -16,7 +16,7 @@ This plugin acts as a proxy between HomeKit and a device that temperature using 
  
 # installation 
 
-1. Copy the project files into /usr/local/lib/node_modules/homebridge-thermostat
+1. Copy the project files into `/usr/local/lib/node_modules/homebridge-thermostat`
 
-2. Run `npm install' from `/usr/local/lib/node_modules/homebridge-thermostat` 
+2. Run `npm install` from `/usr/local/lib/node_modules/homebridge-thermostat`
 
