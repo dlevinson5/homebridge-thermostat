@@ -4,7 +4,7 @@ var request = require('sync-request');
 module.exports = function (homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
-    homebridge.registerAccessory("homebridge-thermostat-ex", "Thermostat", HttpThermostat);
+    homebridge.registerAccessory("homebridge-thermostat", "Thermostat", HttpThermostat);
     // homebridge.registerAccessory("homebridge-thermostat", "homebridge-thermostat", HttpThermostat);
 };
 

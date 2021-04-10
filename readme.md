@@ -5,9 +5,9 @@ Example config.json:
     {
       "accessories": [
           {
-             "accessory": "homebridge-thermostat",
-             "name": "ESP8266-DHT11",
-             "url": "http://10.0.0.1/" 
+             "accessory": "homebridge-thermostat.Thermostat",
+             "name": "Kuhl-LivingRoom",
+             "url": "http://192.168.1.46/" 
           }
       ]
     }
@@ -16,4 +16,7 @@ This plugin acts as a proxy between HomeKit and a device that temperature using 
  
 # installation 
 
-Place the project files in /usr/local/lib/node_module on the Homebridge installation and then run `npm install ` from within this folder to install dependencies. 
+1. Copy the project files into /usr/local/lib/node_modules/homebridge-thermostat
+
+2. Run `npm install' from `/usr/local/lib/node_modules/homebridge-thermostat` 
+

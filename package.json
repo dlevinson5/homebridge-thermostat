@@ -1,5 +1,5 @@
 {
-  "name": "homebridge-temperature",
+  "name": "homebridge-thermostat",
   "version": "0.0.1",
   "description": "homebridge thermostat plugin",
   "license": "ISC",
